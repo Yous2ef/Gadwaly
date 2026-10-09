@@ -1,0 +1,864 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>منظّم السكاشن</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Alexandria:wght@500;700&family=IBM+Plex+Sans+Arabic:wght@400;500;600&display=swap">
+<style>
+/* Layout: one column on phones (pick courses, choose a slot per course, then the week);
+   from 980px the week sits pinned beside the picker. Course colour is the only decoration. */
+:root{
+  --bg:#F1F5F1; --surface:#FFFFFF; --sunken:#E6ECE6; --ink:#15211B; --muted:#56665D; --line:#D3DCD4;
+  --accent:#0C6B50; --accent-ink:#FFFFFF; --accent-soft:#DAEEE4;
+  --bad:#B3261E; --bad-soft:#FBE5E2; --warn:#7A5200; --warn-soft:#FFF0CC;
+  --tile-s:66%; --tile-l:90%; --tile-ts:55%; --tile-tl:19%; --tile-bs:42%; --tile-bl:64%;
+  --font-display:'Alexandria','IBM Plex Sans Arabic',Tahoma,sans-serif;
+  --font-body:'IBM Plex Sans Arabic','Segoe UI',Tahoma,'Noto Sans Arabic',sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0F1814; --surface:#17231D; --sunken:#0A120E; --ink:#E6EEE8; --muted:#9BABA2; --line:#2B3B33;
+    --accent:#62CBA5; --accent-ink:#05241A; --accent-soft:#17382D;
+    --bad:#FF8E84; --bad-soft:#3B1A17; --warn:#F1C96B; --warn-soft:#382D10;
+    --tile-s:38%; --tile-l:23%; --tile-ts:70%; --tile-tl:88%; --tile-bs:40%; --tile-bl:42%;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0F1814; --surface:#17231D; --sunken:#0A120E; --ink:#E6EEE8; --muted:#9BABA2; --line:#2B3B33;
+  --accent:#62CBA5; --accent-ink:#05241A; --accent-soft:#17382D;
+  --bad:#FF8E84; --bad-soft:#3B1A17; --warn:#F1C96B; --warn-soft:#382D10;
+  --tile-s:38%; --tile-l:23%; --tile-ts:70%; --tile-tl:88%; --tile-bs:40%; --tile-bl:42%;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--font-body);font-size:.9375rem;line-height:1.6}
+.app{max-width:80rem;margin-inline:auto;padding-inline:16px;padding-block:20px 40px;display:flex;flex-direction:column;gap:18px}
+h1,h2,h3,p{margin:0}
+h1{font-family:var(--font-display);font-weight:700;font-size:1.7rem;line-height:1.3;text-wrap:balance}
+h2{font-family:var(--font-display);font-weight:500;font-size:1.05rem;line-height:1.4}
+h3{font-size:.98rem;font-weight:600;line-height:1.45}
+.t{font-variant-numeric:tabular-nums;unicode-bidi:isolate;white-space:nowrap}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+.top{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:14px}
+.top p{color:var(--muted);max-width:38rem}
+.tabs{display:inline-flex;background:var(--sunken);border-radius:10px;padding:3px;gap:3px}
+.tabs button{border:0;background:transparent;padding:.45rem 1rem;border-radius:8px;font-weight:500;color:var(--muted)}
+.tabs button[aria-selected="true"]{background:var(--surface);color:var(--ink);box-shadow:0 0 0 1px var(--line)}
+
+.notice{background:var(--warn-soft);color:var(--warn);border-radius:8px;padding:.6rem .85rem;font-size:.875rem}
+.notice b{font-weight:600}
+
+.cols{display:grid;grid-template-columns:minmax(0,1fr);gap:22px}
+.col{display:flex;flex-direction:column;gap:22px;min-width:0}
+@media (min-width:980px){
+  .cols{grid-template-columns:minmax(0,27rem) minmax(0,1fr);align-items:start}
+  .col-week{position:sticky;top:calc(env(safe-area-inset-top,0px) + 12px)}
+}
+.panel{display:flex;flex-direction:column;gap:10px;min-width:0}
+.panel > header{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px}
+.hint{color:var(--muted);font-size:.875rem}
+
+.field{width:100%;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:.55rem .75rem}
+.field::placeholder{color:var(--muted)}
+.btn{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:.45rem .85rem;font-weight:500}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.quiet{background:transparent}
+.btn.danger{color:var(--bad)}
+.btn[disabled]{opacity:.55;cursor:default}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+
+.example{background:var(--accent-soft);border-radius:8px;padding:.5rem .75rem;font-size:.875rem;display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center;justify-content:space-between}
+.linkbtn{border:0;background:none;padding:0;color:var(--accent);font-weight:600;text-decoration:underline;text-underline-offset:3px}
+
+.clist{list-style:none;margin:0;padding:4px;max-height:15.5rem;overflow:auto;background:var(--surface);border:1px solid var(--line);border-radius:10px;display:flex;flex-direction:column;gap:2px}
+.clist button{width:100%;text-align:start;border:0;background:transparent;border-radius:7px;padding:.42rem .6rem;display:flex;gap:8px;align-items:baseline;justify-content:space-between}
+.clist button:hover{background:var(--sunken)}
+.clist button[aria-pressed="true"]{background:var(--accent-soft);font-weight:600}
+.clist .meta{color:var(--muted);font-size:.8rem;font-weight:400;white-space:nowrap}
+.clist button[aria-pressed="true"] .meta::before{content:"✓ ";color:var(--accent);font-weight:700}
+.clist .none{padding:.6rem;color:var(--muted)}
+
+.cards{display:flex;flex-direction:column;gap:12px}
+.course{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.course > header{display:flex;gap:10px;align-items:flex-start}
+.course h3{flex:1;min-width:0}
+.sw{flex:none;width:.9rem;height:.9rem;border-radius:3px;margin-top:.33rem;background:hsl(var(--h) var(--tile-s) var(--tile-l));border:1.5px solid hsl(var(--h) var(--tile-bs) var(--tile-bl))}
+.x{flex:none;border:0;background:transparent;color:var(--muted);border-radius:6px;width:1.9rem;height:1.9rem;font-size:1.15rem;line-height:1}
+.x:hover{background:var(--sunken);color:var(--ink)}
+.lec{font-size:.875rem;color:var(--muted);display:flex;flex-wrap:wrap;gap:4px 8px;align-items:center}
+.lec b{color:var(--ink);font-weight:600}
+.optday{display:grid;grid-template-columns:4.2rem minmax(0,1fr);gap:8px;align-items:start}
+.dname{font-size:.82rem;color:var(--muted);padding-top:.42rem}
+.grp{display:flex;flex-direction:column;gap:6px;min-width:0}
+.glabel{font-size:.84rem;font-weight:600}
+.glabel small{font-weight:400;font-size:.8rem;color:var(--muted);margin-inline-start:.35rem}
+.chips{display:flex;flex-wrap:wrap;gap:6px;min-width:0}
+.chip{border:1px solid var(--line);background:var(--bg);border-radius:8px;padding:.32rem .6rem;font-size:.85rem;text-align:start;display:flex;flex-direction:column;line-height:1.45}
+.chip:hover{border-color:var(--muted)}
+.chip[aria-pressed="true"]{background:hsl(var(--h) var(--tile-s) var(--tile-l));border-color:hsl(var(--h) var(--tile-bs) var(--tile-bl));color:hsl(var(--h) var(--tile-ts) var(--tile-tl));font-weight:600}
+.chip.clash{border-style:dashed;border-color:var(--bad)}
+.chip .why{color:var(--bad);font-size:.76rem;font-weight:500}
+.chip[aria-pressed="true"].clash{box-shadow:0 0 0 2px var(--bad)}
+details.more > summary{cursor:pointer;color:var(--accent);font-weight:500;font-size:.875rem;width:fit-content}
+details.more[open] > summary{margin-bottom:8px}
+.form{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.form .wide{grid-column:1/-1}
+.form label{display:flex;flex-direction:column;gap:3px;font-size:.8rem;color:var(--muted)}
+.mini{font-size:.85rem;display:flex;flex-wrap:wrap;gap:6px}
+.pill{display:inline-flex;gap:6px;align-items:center;background:var(--sunken);border-radius:999px;padding:.15rem .3rem .15rem .7rem;font-size:.82rem}
+.pill button{border:0;background:transparent;color:var(--muted);border-radius:50%;width:1.4rem;height:1.4rem;line-height:1}
+.pill button:hover{color:var(--bad)}
+
+.checks{display:flex;flex-wrap:wrap;gap:6px 16px}
+.checks label{display:flex;gap:7px;align-items:center}
+.checks input{accent-color:var(--accent);width:1.05rem;height:1.05rem}
+.suggs{display:flex;flex-direction:column;gap:10px}
+.sugg{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 12px;display:grid;grid-template-columns:auto minmax(0,1fr);gap:8px 14px;align-items:start}
+.sugg.on{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+.sugg .head{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between}
+.sugg .head b{font-weight:600}
+.sugg .stat{color:var(--muted);font-size:.85rem}
+.mx{display:grid;grid-template-columns:auto repeat(5,.85rem);gap:3px;align-items:center;font-size:.72rem;color:var(--muted)}
+.mx i{width:.85rem;height:.85rem;border-radius:2px;background:var(--sunken);display:block}
+.mx i.f{background:var(--muted)}
+.mx i.s{background:hsl(var(--h) 55% 50%)}
+.mx i.c{background:var(--bad)}
+.sugg ul{list-style:none;margin:0;padding:0;font-size:.84rem;display:flex;flex-direction:column;gap:1px;min-width:0}
+.sugg li span{color:var(--muted)}
+
+.sum{display:flex;flex-wrap:wrap;gap:6px}
+.tag{border-radius:999px;padding:.12rem .7rem;font-size:.82rem;background:var(--sunken);color:var(--ink)}
+.tag.ok{background:var(--accent-soft);color:var(--accent)}
+.tag.bad{background:var(--bad-soft);color:var(--bad);font-weight:600}
+.tag.warn{background:var(--warn-soft);color:var(--warn)}
+
+.grid-scroll{overflow-x:auto;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+table.week{width:100%;min-width:44rem;border-collapse:separate;border-spacing:0;table-layout:fixed}
+table.week th,table.week td{border-inline-start:1px solid var(--line);border-top:1px solid var(--line);padding:5px;vertical-align:top}
+table.week tr > :first-child{border-inline-start:0;width:5.2rem}
+table.week thead th{border-top:0;background:var(--sunken);font-weight:500;font-size:.82rem;padding:.5rem .3rem;text-align:center}
+table.week tbody th{font-weight:500;font-size:.9rem;text-align:start;padding:.6rem .7rem;background:var(--sunken)}
+table.week td{height:4.9rem}
+table.week td.clash{background:var(--bad-soft);box-shadow:inset 0 0 0 2px var(--bad)}
+.cell{display:flex;flex-direction:column;gap:4px}
+.tile{border-radius:7px;padding:.35rem .5rem;font-size:.78rem;line-height:1.45;display:flex;flex-direction:column;min-width:0;
+  background:hsl(var(--h) var(--tile-s) var(--tile-l));color:hsl(var(--h) var(--tile-ts) var(--tile-tl));border:1px solid hsl(var(--h) var(--tile-bs) var(--tile-bl))}
+.tile b{font-weight:600;font-size:.84rem;overflow-wrap:anywhere}
+.tile .k{font-weight:600}
+.tile.fix{background:var(--sunken);color:var(--ink);border-color:var(--line)}
+.tile.lecture{border-width:2px}
+.clashlbl{color:var(--bad);font-size:.76rem;font-weight:600}
+
+.agenda{display:none;flex-direction:column;gap:14px}
+.aday{display:flex;flex-direction:column;gap:6px}
+.aday h3{font-family:var(--font-display);font-weight:500;font-size:.95rem}
+.aitem{display:grid;grid-template-columns:5.6rem minmax(0,1fr);gap:8px;align-items:start}
+.aitem > .t{color:var(--muted);font-size:.84rem;padding-top:.4rem}
+.aitem.clash .cell{box-shadow:0 0 0 2px var(--bad);border-radius:9px;padding:3px}
+.free{color:var(--muted);font-size:.86rem}
+.empty{color:var(--muted);background:var(--surface);border:1px dashed var(--line);border-radius:10px;padding:1rem;text-align:center}
+@media (max-width:719px){ .grid-scroll{display:none} .agenda{display:flex} }
+
+.filters{display:flex;flex-direction:column;gap:10px}
+.fgroup{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.fgroup > span{font-size:.82rem;color:var(--muted);min-width:2.6rem}
+.fchip{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:.22rem .8rem;font-size:.86rem}
+.fchip[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:500}
+.bgroup{display:flex;flex-direction:column;gap:0}
+.bgroup h3{font-family:var(--font-display);font-weight:500;font-size:.95rem;padding:.9rem 0 .4rem;display:flex;gap:10px;align-items:baseline}
+.bgroup h3 small{font-family:var(--font-body);font-weight:400;color:var(--muted);font-size:.8rem}
+.brow{display:grid;grid-template-columns:minmax(0,1fr) 8rem 11rem auto;gap:4px 12px;align-items:center;padding:.5rem .7rem;background:var(--surface);border:1px solid var(--line);border-top-width:0}
+.bgroup .brow:first-of-type{border-top-width:1px;border-radius:10px 10px 0 0}
+.bgroup .brow:last-of-type{border-radius:0 0 10px 10px}
+.bgroup .brow:only-of-type{border-radius:10px}
+.brow .n{font-weight:500}
+.brow .m{color:var(--muted);font-size:.875rem}
+.brow .btn{padding:.25rem .7rem;font-size:.84rem;white-space:nowrap}
+.brow .btn[aria-pressed="true"]{background:var(--accent-soft);border-color:transparent;color:var(--accent)}
+@media (max-width:719px){
+  .brow{grid-template-columns:minmax(0,1fr) auto}
+  .brow .n{grid-column:1}
+  .brow .m.room{grid-column:1;grid-row:2}
+  .brow .m.ta{grid-column:1;grid-row:3}
+  .brow .btn{grid-column:2;grid-row:1/span 3}
+  .brow .m:empty{display:none}
+}
+
+footer.credit{border-top:1px solid var(--line);padding-top:14px;display:flex;flex-wrap:wrap;gap:6px 16px;align-items:center;color:var(--muted);font-size:.875rem}
+footer.credit b{color:var(--ink);font-weight:600}
+footer.credit a{color:var(--accent);font-weight:500;text-underline-offset:3px}
+
+.shot{position:fixed;inset:0;z-index:20;background:color-mix(in srgb,var(--sunken) 92%,transparent);overflow:auto;
+  padding:calc(env(safe-area-inset-top,0px) + 16px) 16px calc(env(safe-area-inset-bottom,0px) + 16px)}
+.shot .box{max-width:60rem;margin-inline:auto;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:10px}
+.shot img{display:block;width:100%;height:auto;border:1px solid var(--line);border-radius:6px}
+.shot .msg{font-size:.875rem;color:var(--muted)}
+@media (prefers-reduced-motion:no-preference){ .chip,.btn,.fchip,.clist button{transition:background-color .12s,border-color .12s} }
+</style>
+
+<div class="app" dir="rtl" lang="ar">
+  <header class="top">
+    <div>
+      <h1>منظّم السكاشن</h1>
+      <p>اختر موادك، ثم سكشن واحد لكل مادة، وشاهد أسبوعك كاملًا بلا تعارض.</p>
+    </div>
+    <nav class="tabs" role="tablist" aria-label="طريقة العرض">
+      <button type="button" role="tab" id="tab-plan" data-act="tab" data-tab="plan" aria-selected="true">جدولي</button>
+      <button type="button" role="tab" id="tab-browse" data-act="tab" data-tab="browse" aria-selected="false">كل السكاشن</button>
+    </nav>
+  </header>
+
+  <main>
+    <section id="view-plan" class="cols" role="tabpanel" aria-labelledby="tab-plan">
+      <div class="col">
+        <section class="panel" aria-labelledby="h-courses">
+          <header><h2 id="h-courses">موادي</h2><span class="hint" id="course-count"></span></header>
+          <div id="example-slot"></div>
+          <input class="field" id="course-q" type="search" placeholder="ابحث باسم المادة" aria-label="ابحث عن مادة" autocomplete="off">
+          <ul class="clist" id="course-list"></ul>
+        </section>
+
+        <section class="panel" aria-labelledby="h-auto">
+          <header><h2 id="h-auto">اقتراح تلقائي</h2></header>
+          <p class="hint">يختار سكشن لكل مادة بحيث لا يتعارض مع محاضراتك ومواعيدك الثابتة.</p>
+          <div class="checks">
+            <label><input type="checkbox" id="pref-days"> أقل عدد أيام في الكلية</label>
+            <label><input type="checkbox" id="pref-gaps"> أقل فواصل بين المواعيد</label>
+          </div>
+          <div class="row"><button type="button" class="btn primary" data-act="suggest">اقترح جداول</button></div>
+          <div class="suggs" id="suggs" aria-live="polite"></div>
+        </section>
+
+        <section class="panel" aria-labelledby="h-secs">
+          <header><h2 id="h-secs">السكاشن</h2><span class="hint">اضغط على موعد لاختياره</span></header>
+          <div class="cards" id="cards"></div>
+        </section>
+
+        <section class="panel">
+          <details class="more" id="fixed-box">
+            <summary>مواعيد ثابتة أخرى</summary>
+            <div class="form">
+              <label class="wide">الاسم<input class="field" id="fx-name" type="text" placeholder="مثال: تدريب، شغل، محاضرة مادة مش في القائمة" autocomplete="off"></label>
+              <label>اليوم<select class="field" id="fx-day"></select></label>
+              <label>الوقت<select class="field" id="fx-per"></select></label>
+              <label class="wide">المكان (اختياري)<input class="field" id="fx-room" type="text" autocomplete="off"></label>
+              <div class="wide row"><button type="button" class="btn" data-act="add-fixed">أضف الموعد</button><span class="hint" id="fx-msg"></span></div>
+            </div>
+          </details>
+          <div class="mini" id="fixed-list"></div>
+        </section>
+      </div>
+
+      <div class="col col-week">
+        <section class="panel" aria-labelledby="h-week">
+          <header>
+            <h2 id="h-week">أسبوعي</h2>
+            <div class="row">
+              <button type="button" class="btn" data-act="save-img">احفظ كصورة</button>
+              <button type="button" class="btn quiet danger" id="reset-btn" data-act="reset">ابدأ من جديد</button>
+            </div>
+          </header>
+          <div class="sum" id="sum"></div>
+          <div class="grid-scroll" id="grid"></div>
+          <div class="agenda" id="agenda"></div>
+        </section>
+      </div>
+    </section>
+
+    <section id="view-browse" class="panel" role="tabpanel" aria-labelledby="tab-browse" hidden>
+      <header><h2>كل السكاشن</h2><span class="hint" id="browse-count"></span></header>
+      <div class="filters">
+        <input class="field" id="browse-q" type="search" placeholder="ابحث بالمادة أو المعيد أو المكان" aria-label="ابحث في السكاشن" autocomplete="off">
+        <div class="fgroup" id="f-day"></div>
+        <div class="fgroup" id="f-per"></div>
+      </div>
+      <div id="browse-list"></div>
+    </section>
+  </main>
+
+  <footer class="credit">
+    <span>صنعها <b dir="ltr">Youssef Mahmoud</b></span>
+    <a href="https://github.com/Yous2ef" target="_blank" rel="noopener">GitHub</a>
+    <a href="https://www.linkedin.com/in/yous2ef1/" target="_blank" rel="noopener">LinkedIn</a>
+  </footer>
+</div>
+
+<div class="shot" id="shot" role="dialog" aria-modal="true" aria-label="صورة الجدول" dir="rtl" lang="ar" hidden>
+  <div class="box">
+    <div class="row" style="justify-content:space-between">
+      <h2>صورة الجدول</h2>
+      <div class="row">
+        <button type="button" class="btn primary" id="dl-btn" data-act="download-img" hidden>نزّل الصورة</button>
+        <button type="button" class="btn" data-act="close-shot">إغلاق</button>
+      </div>
+    </div>
+    <p class="msg" id="shot-msg">على الموبايل: اضغط مطوّلًا على الصورة واختر حفظ. على الكمبيوتر: كليك يمين ثم حفظ الصورة.</p>
+    <img id="shot-img" alt="جدولك الأسبوعي كصورة">
+  </div>
+</div>
+
+<script>
+(() => {
+'use strict';
+document.documentElement.lang = 'ar';
+document.documentElement.dir = 'rtl';
+
+/* ---------- Data ---------- */
+const DAYS = ['السبت','الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة'];
+const DAY_AB = ['س','ح','ن','ث','ر','خ','ج'];
+const PER = [['8:00','10:00'],['10:00','12:00'],['12:00','2:00'],['2:00','4:00'],['4:00','6:00']];
+const HUES = [152, 212, 28, 330, 268, 48, 188, 8, 96, 300, 232, 68];
+
+const C = {
+  stat1:'إحصاء واحتمالات – 1', isf:'أساسيات نظم المعلومات', dm:'التنقيب فى البيانات', ai:'الذكاء الاصطناعي',
+  nn:'الشبكات العصبية والتعلم العميق', par:'المعالجة على التوازي والحاسبات عالية الأداء', mm:'الوسائط المتعددة',
+  prog2:'برمجة الحاسبات – 2', prog3:'برمجة الحاسبات – 3', sqa:'تأكيد جودة البرمجيات ونظم المعلومات',
+  sad1:'تحليل وتصميم نظم المعلومات – 1', stor:'تخزين واسترجاع البيانات', dcom:'تراسل البيانات', logic:'تصميم منطقي',
+  ml:'تعلم الآلة', comm:'تكنولوجيا الاتصالات', bigd:'تكنولوجيا البيانات الكبيرة', org:'تنظيم الحاسبات',
+  bi:'ذكاء الأعمال وتحليل البيانات', math1:'رياضيات – 1', net2:'شبكات الحاسبات – 2', dsp:'معالجة الإشارات الرقمية',
+  img1:'معالجة الصور – 1', plc:'مفاهيم لغات البرمجة', intro:'مقدمة فى الحاسبات', dsintro:'مقدمة فى علم البيانات',
+  cvx:'نظرية التحسين المحدبة', os2:'نظم التشغيل – 2', db1:'نظم قواعد البيانات – 1', db2:'نظم قواعد البيانات – 2',
+  dstruct:'هياكل البيانات',
+  hr:'حقوق الإنسان ومكافحة الفساد', ethics:'أخلاقيات المهنة'
+};
+const T = {
+  saad:'م.م سعد', agamal:'م. عبدالرحمن جمال', shereen:'معيدة شيرين الجزار', shehab:'م. شهاب', manar:'م. منار',
+  esraa:'م. إسراء', atef:'م. محمد عاطف', asem:'م. عاصم', ashraf:'م.م أحمد أشرف', zahraa:'م. الزهراء',
+  abdallah:'م.م عبدالله عصام', ayar:'م.م اية الرحمن', sawar:'د. أحمد صوار', samaa:'م.م سماء', omart:'معيد عمر طارق',
+  yara:'م. يارا', hagar:'م. هاجر', kamel:'م. كامل', yehia:'م. يحيى', ramadan:'م.م رمضان', omars:'م. عمر سامح',
+  menna:'م. منة', magdy:'م.م مصطفى مجدي', bishoy:'م.م بيشوي', michel:'م.م ميشيل', ayaa:'م. اية ابو العيون',
+  ibrahim:'م.م إبراهيم', hanafy:'م. عبدالرحمن حنفي', amr:'م.م عمرو', _:''
+};
+/* Room codes: L = معمل, M = مدينة معمل, Q = قاعة. */
+const roomName = r => r === 'H3' ? 'H3' : r === 'L5B' ? 'معمل 5 ب'
+  : (r[0] === 'L' ? 'معمل ' : r[0] === 'M' ? 'مدينة معمل ' : 'قاعة ') + r.slice(1);
+
+/* [day, period, "course room ta; ..."] — day 1 = الأحد … 5 = الخميس */
+const RAW = [
+ [1,0,'stat1 H3 _; isf M5 saad; prog2 L13 agamal; prog3 L3 shereen; dcom Q1 shehab; logic L10 manar; math1 Q2 _; intro M1 esraa; intro M3 atef; db1 L11 asem; dstruct L2 ashraf'],
+ [1,1,'stat1 H3 _; isf M5 zahraa; dm L4 saad; prog2 L13 agamal; prog3 L3 shereen; dcom Q1 shehab; logic L10 manar; math1 Q2 _; intro M1 esraa; intro M3 atef; db1 L11 asem; dstruct L2 ashraf'],
+ [1,2,'stat1 H3 _; isf M5 zahraa; prog2 L13 agamal; prog3 L3 shereen; dcom Q1 shehab; logic L10 manar; math1 Q2 _; intro M1 esraa; intro M3 atef; db1 L11 asem; dstruct L2 ashraf'],
+ [1,3,'stat1 H3 _; dm L12 saad; ai L3 abdallah; prog2 L13 agamal; prog3 L4 shereen; logic L10 shehab; math1 Q2 _; intro M1 esraa; intro M3 atef; db1 L11 asem; dstruct L2 ashraf'],
+
+ [2,0,'isf M5 ayar; prog2 L13 sawar; sad1 Q4 samaa; logic L10 shehab; ml L4 omart; bi H3 yara; intro M1 hagar; intro M3 kamel; db1 L11 zahraa; dstruct L2 ashraf'],
+ [2,1,'isf M5 ayar; prog2 L13 sawar; sad1 Q4 samaa; logic L10 shehab; intro M1 hagar; intro M3 kamel; dsintro Q2 yehia; os2 L4 omart; db1 L11 zahraa; dstruct L2 ashraf'],
+ [2,2,'isf M5 ayar; prog2 L13 sawar; sad1 Q4 samaa; logic L10 shehab; ml L3 omart; bi H3 yara; intro M1 hagar; dsintro Q2 yehia; db1 L11 zahraa; dstruct L2 ashraf'],
+ [2,3,'isf M5 ayar; mm L12 kamel; prog2 L13 sawar; sad1 Q4 samaa; logic L10 shehab; ml L3 omart; bi H3 yara; db1 L11 zahraa; dstruct L2 ashraf'],
+
+ [3,0,'isf M5 saad; ai L3 abdallah; prog2 L13 kamel; sad1 Q1 ramadan; logic L10 manar; db1 L11 omars; db2 L12 menna; dstruct L2 magdy'],
+ [3,1,'isf M5 saad; ai L3 abdallah; prog2 L13 kamel; sad1 Q1 ramadan; logic L10 manar; dsp Q2 agamal; plc L4 ashraf; intro M1 yehia; intro M3 bishoy; db1 L11 omars; db2 L12 menna; dstruct L2 magdy'],
+ [3,2,'isf M3 yara; ai L3 abdallah; prog2 L13 kamel; sad1 Q2 ramadan; logic L10 manar; bigd Q1 michel; intro M1 menna; dsintro H3 yehia; cvx L4 shereen; db1 L11 omars; dstruct L2 magdy'],
+ [3,3,'isf M3 yara; ai L3 abdallah; prog2 L13 kamel; logic L10 manar; bigd Q1 michel; intro M1 menna; cvx L4 shereen; db1 L11 omars; dstruct L2 magdy'],
+
+ [4,0,'stat1 H3 _; isf M3 ayaa; isf M5 michel; ai L5B abdallah; nn L4 omart; prog2 L13 sawar; stor L3 yara; dcom Q1 ibrahim; logic L10 hanafy; bigd L2 zahraa; math1 Q2 _; img1 L12 manar; intro M1 menna'],
+ [4,1,'stat1 H3 _; isf M3 ayaa; isf M5 michel; nn L12 omart; prog2 L13 shereen; dcom Q1 ibrahim; logic L10 manar; comm L4 hanafy; bigd L2 zahraa; org L3 abdallah; math1 Q2 _; intro M1 menna'],
+ [4,2,'stat1 H3 _; isf M5 michel; isf M3 ayaa; par L3 abdallah; prog2 L13 shereen; stor L2 yara; dcom Q1 ibrahim; logic L10 hanafy; math1 Q2 _; intro M1 menna'],
+ [4,3,'stat1 H3 _; par L3 abdallah; prog2 L13 shereen; stor L2 yara; dcom Q1 ibrahim; logic L10 hanafy; math1 Q2 _; intro M1 menna; db1 L11 omars'],
+
+ [5,1,'dstruct L13 magdy'],
+ [5,2,'stat1 H3 _; isf M5 ayaa; isf M3 ramadan; sqa L3 hagar; dcom Q1 bishoy; logic L10 hanafy; math1 Q2 _; intro M1 atef; db1 L4 yehia; db1 L11 amr; db2 L2 asem; dstruct L13 magdy'],
+ [5,3,'stat1 H3 _; isf M5 ayaa; isf M3 esraa; dcom Q1 bishoy; logic L10 hanafy; math1 Q2 _; net2 L12 atef; db1 L4 yehia; db1 L11 amr; db2 L2 asem; dstruct L13 magdy']
+];
+/* Lecture times known so far (from one student's timetable).
+   Several rows for one course are alternative times: the student attends one of them. */
+const LECTURES = [
+  ['cvx',    1, 0, 'مدرج 2',   '', ''],
+  ['dm',     1, 2, 'مدرج 17ب', '', ''],
+  ['os2',    1, 3, 'مدرج 17ب', '', ''],
+  ['bi',     4, 1, 'مدرج 2',   '', ''],
+  ['stor',   5, 2, 'مدرج 17ب', '', ''],
+  ['db2',    2, 0, 'مدرج 17ب', 'أ.د.م محمد مرعي', ''],
+  ['db2',    2, 1, 'مدرج 17ب', 'أ.د.م محمد مرعي', ''],
+  ['hr',     2, 2, 'مدرج 2',   '', 'مجموعة 2'],
+  ['prog3',  2, 3, 'مدرج 2',   'أ.د اسلام جمال', 'مجموعة 2'],
+  ['bigd',   3, 2, 'مدرج 17ب', 'د. وائل عباس', ''],
+  ['sad1',   3, 3, 'مدرج 17ب', 'د. صفاء عزام', 'مجموعة 1'],
+  ['org',    3, 3, 'مدرج 2',   '', ''],
+  ['par',    4, 0, 'مدرج 2',   'د. أحمد هشام', ''],
+  ['ml',     5, 0, 'مدرج 17ب', 'د. سلوى', ''],
+  ['ethics', 5, 1, 'مدرج 2',   'د. هلال احمد', 'مجموعة 1'],
+  ['ai',     5, 2, 'مدرج 2',   'د. عمرو غنيم', ''],
+  ['ai',     5, 3, 'مدرج 2',   'د. عمرو غنيم', '']
+].map(([course, day, period, room, who, grp]) => ({id:`L|${course}|${day}|${period}`, course, day, period, room, who, grp}));
+const EXAMPLE = ['cvx','db2','bigd','par','ml','ai'];
+
+const SECTIONS = [];
+const SMAP = {};
+for (const [day, period, list] of RAW) {
+  for (const part of list.split(';')) {
+    const [course, r, t] = part.trim().split(/\s+/);
+    if (!(course in C) || !(t in T)) throw new Error('bad row: ' + part);
+    const s = {id:`${course}|${day}|${period}|${r}`, course, day, period, room:roomName(r), ta:T[t]};
+    SECTIONS.push(s); SMAP[s.id] = s;
+  }
+}
+const COURSES = Object.keys(C).map(id => ({
+  id, name:C[id],
+  sections: SECTIONS.filter(s => s.course === id),
+  lectures: LECTURES.filter(l => l.course === id)
+})).sort((a, b) => a.name.localeCompare(b.name, 'ar'));
+const CMAP = Object.fromEntries(COURSES.map(c => [c.id, c]));
+
+/* ---------- Helpers ---------- */
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+const norm = s => String(s).toLowerCase().replace(/[ً-ْـ]/g, '').replace(/[أإآ]/g, 'ا')
+  .replace(/ى/g, 'ي').replace(/ة/g, 'ه').replace(/[–—-]/g, ' ').replace(/\s+/g, ' ').trim();
+const tm = s => `<span class="t" dir="ltr">${s}</span>`;
+const range = (a, b) => tm(`${PER[a][0]} – ${PER[b][1]}`);
+const nDays = n => n === 0 ? 'لا أيام' : n === 1 ? 'يوم واحد' : n === 2 ? 'يومان' : n <= 10 ? `${n} أيام` : `${n} يومًا`;
+const nGaps = n => n === 0 ? 'بلا فواصل' : n === 1 ? 'فاصل واحد' : n === 2 ? 'فاصلان' : n <= 10 ? `${n} فواصل` : `${n} فاصلًا`;
+const kindName = k => k === 'lec' ? 'محاضرة' : k === 'sec' ? 'سكشن' : 'موعد ثابت';
+
+/* ---------- State ---------- */
+const KEY = 'sections-planner-v1';
+let state = {courses:[], picks:{}, lpicks:{}, colors:{}, manual:[], prefs:{days:true, gaps:true}, example:false};
+let sugg = null, suggApplied = -1;
+function load() {
+  let saved = null;
+  try { saved = JSON.parse(localStorage.getItem(KEY) || 'null'); } catch (e) {}
+  if (saved && Array.isArray(saved.courses)) {
+    state.courses = saved.courses.filter(id => CMAP[id]);
+    state.picks = {};
+    for (const id of state.courses) if (saved.picks && SMAP[saved.picks[id]]) state.picks[id] = saved.picks[id];
+    state.colors = saved.colors || {};
+    state.manual = Array.isArray(saved.manual) ? saved.manual.filter(m => !m.cid || state.courses.includes(m.cid)) : [];
+    state.lpicks = {};
+    for (const id of state.courses) { const v = saved.lpicks && saved.lpicks[id]; if (v === 'none' || (v && lecOptions(id).some(o => o.id === v))) state.lpicks[id] = v; }
+    state.prefs = Object.assign({days:true, gaps:true}, saved.prefs);
+    state.example = !!saved.example;
+  } else {
+    state.courses = EXAMPLE.slice();
+    state.example = true;
+  }
+  state.courses.forEach(ensureColor);
+}
+function save() { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} }
+function ensureColor(cid) {
+  if (state.colors[cid] != null) return;
+  const used = new Set(state.courses.map(id => state.colors[id]));
+  state.colors[cid] = HUES.find(h => !used.has(h)) ?? HUES[state.courses.length % HUES.length];
+}
+function changed(keepSugg) {
+  state.example = false;
+  if (!keepSugg) { sugg = null; suggApplied = -1; }
+  save(); renderPlan(); if (!$('view-browse').hidden) renderBrowse();
+}
+
+/* ---------- Model ---------- */
+/* A course's lecture times: built-in ones plus any the student added. One option is taken as chosen; several need a pick. */
+const lecOptions = cid => CMAP[cid].lectures.concat(state.manual.filter(m => m.cid === cid)
+  .map(m => ({id:m.id, course:cid, day:m.day, period:m.period, room:m.room || '', who:'', grp:'', manual:true})));
+function lecPick(cid) {
+  const o = lecOptions(cid), v = state.lpicks[cid];
+  if (v === 'none') return null;                 /* the student switched the only known time off */
+  return o.length === 1 ? o[0] : o.find(x => x.id === v) || null;
+}
+function placed() {
+  const out = [];
+  for (const cid of state.courses) {
+    const c = CMAP[cid], l = lecPick(cid);
+    if (l) out.push({kind:'lec', cid, name:c.name, day:l.day, period:l.period, room:l.room, who:l.who});
+    const s = SMAP[state.picks[cid]];
+    if (s) out.push({kind:'sec', cid, name:c.name, day:s.day, period:s.period, room:s.room, who:s.ta});
+  }
+  for (const m of state.manual) if (!m.cid) out.push({kind:'fix', cid:null, name:m.name, day:m.day, period:m.period, room:m.room || '', who:''});
+  return out;
+}
+/* Blocks the auto-suggest cannot move: other appointments and lectures with a single time. */
+const fixedBlocks = () => placed().filter(b => b.kind === 'fix' || (b.kind === 'lec' && lecOptions(b.cid).length === 1));
+function measure(occ) {
+  let days = 0, gaps = 0, clashes = 0;
+  for (let d = 0; d < 7; d++) {
+    let min = -1, max = -1, cnt = 0;
+    for (let p = 0; p < 5; p++) {
+      const n = occ[d * 5 + p];
+      if (n > 0) { cnt++; if (min < 0) min = p; max = p; if (n > 1) clashes += n - 1; }
+    }
+    if (cnt) { days++; gaps += (max - min + 1) - cnt; }
+  }
+  return {days, gaps, clashes};
+}
+const occOf = bl => { const o = new Array(35).fill(0); bl.forEach(b => o[b.day * 5 + b.period]++); return o; };
+const shownDays = bl => [0,1,2,3,4,5,6].filter(d => (d >= 1 && d <= 5) || bl.some(b => b.day === d));
+const others = (cid, kind, day, period, bl) => bl.filter(b => b.day === day && b.period === period && !(b.kind === kind && b.cid === cid));
+
+/* Best-first search: one section slot per course, plus one lecture time where a course offers several. Returns up to 5 timetables. */
+function suggest() {
+  const occ = occOf(fixedBlocks());
+  const uniq = list => [...new Set(list.map(s => s.day * 5 + s.period))];
+  const items = [];
+  for (const cid of state.courses) {
+    const lo = lecOptions(cid);
+    if (lo.length > 1) items.push({key:'L:' + cid, opts:uniq(lo)});
+    if (CMAP[cid].sections.length) items.push({key:'S:' + cid, opts:uniq(CMAP[cid].sections)});
+  }
+  items.sort((a, b) => a.opts.length - b.opts.length);
+  if (!items.length) return [];
+  const wD = state.prefs.days ? 10 : 0.02, wG = state.prefs.gaps ? 4 : 0.01;
+  const K = 5, LIMIT = 300000, best = [], cur = [];
+  let nodes = 0;
+  const dayUsed = d => { for (let p = 0; p < 5; p++) if (occ[d * 5 + p]) return true; return false; };
+  const countDays = () => { let n = 0; for (let d = 0; d < 7; d++) if (dayUsed(d)) n++; return n; };
+  (function rec(i, clashes) {
+    if (++nodes > LIMIT) return;
+    if (best.length === K && clashes * 1000 + wD * countDays() >= best[K - 1].cost) return;
+    if (i === items.length) {
+      const m = measure(occ), cost = clashes * 1000 + wD * m.days + wG * m.gaps;
+      const r = {cost, clashes, days:m.days, gaps:m.gaps, assign:Object.fromEntries(items.map((it, j) => [it.key, cur[j]]))};
+      let at = best.findIndex(b => cost < b.cost); if (at < 0) at = best.length;
+      best.splice(at, 0, r); if (best.length > K) best.length = K;
+      return;
+    }
+    const rank = k => (occ[k] ? 100 : 0) + (dayUsed((k / 5) | 0) ? 0 : 10) + (k % 5);
+    for (const k of items[i].opts.slice().sort((a, b) => rank(a) - rank(b))) {
+      const cl = occ[k] ? 1 : 0;
+      occ[k]++; cur[i] = k; rec(i + 1, clashes + cl); occ[k]--;
+    }
+  })(0, 0);
+  return best;
+}
+function applySugg(r) {
+  for (const key in r.assign) {
+    const k = r.assign[key], cid = key.slice(2), at = x => x && x.day * 5 + x.period === k;
+    if (key[0] === 'L') {
+      const o = at(lecPick(cid)) ? lecPick(cid) : lecOptions(cid).find(at);
+      if (o) state.lpicks[cid] = o.id;
+    } else if (!at(SMAP[state.picks[cid]])) {
+      const s = CMAP[cid].sections.find(at);
+      if (s) state.picks[cid] = s.id;
+    }
+  }
+}
+
+/* ---------- Render: plan ---------- */
+function renderPicker() {
+  const q = norm($('course-q').value);
+  const list = COURSES.filter(c => !q || norm(c.name).includes(q));
+  $('course-list').innerHTML = list.length ? list.map(c => {
+    const on = state.courses.includes(c.id);
+    return `<li><button type="button" data-act="toggle-course" data-id="${c.id}" aria-pressed="${on}">
+      <span>${esc(c.name)}</span><span class="meta">${c.sections.length ? c.sections.length + ' سكشن' + (c.lectures.length ? ' · محاضرة' : '') : 'محاضرة فقط'}</span></button></li>`;
+  }).join('') : '<li class="none">لا توجد مادة بهذا الاسم.</li>';
+  $('course-count').textContent = state.courses.length ? `${state.courses.length} من ${COURSES.length}` : `${COURSES.length} مادة`;
+  $('example-slot').innerHTML = state.example
+    ? `<p class="example"><span>مثال بست مواد محاضراتها مسجّلة. عدّل عليه أو ابدأ بموادك.</span><button type="button" class="linkbtn" data-act="reset-now">امسح المثال</button></p>` : '';
+}
+const dayOpts = sel => DAYS.map((d, i) => `<option value="${i}"${i === sel ? ' selected' : ''}>${d}</option>`).join('');
+const perOpts = () => PER.map((p, i) => `<option value="${i}">${p[0]} – ${p[1]}</option>`).join('');
+
+function chipsByDay(cid, list, kind, bl) {
+  const cur = kind === 'lec' ? (lecPick(cid) || {}).id : state.picks[cid];
+  const byDay = {};
+  list.forEach(s => (byDay[s.day] ??= []).push(s));
+  return Object.keys(byDay).map(Number).sort((a, b) => a - b).map(d => `<div class="optday"><span class="dname">${DAYS[d]}</span><div class="chips">${
+    byDay[d].slice().sort((a, b) => a.period - b.period).map(s => {
+      const cl = others(cid, kind, s.day, s.period, bl), who = kind === 'lec' ? s.who : s.ta;
+      const why = cl.length ? `تعارض مع ${kindName(cl[0].kind)} ${cl[0].name}` : '';
+      return `<button type="button" class="chip${cl.length ? ' clash' : ''}" data-act="${kind === 'lec' ? 'pick-lec' : 'pick'}" data-cid="${cid}" data-sid="${esc(s.id)}" aria-pressed="${cur === s.id}"${why ? ` title="${esc(why)}"` : ''}>
+        <span>${tm(PER[s.period][0])}${s.room ? ' · ' + esc(s.room) : ''}${who ? ' · ' + esc(who) : ''}${s.grp ? ' · ' + esc(s.grp) : ''}</span>${why ? `<span class="why">${esc(why)}</span>` : ''}</button>`;
+    }).join('')}</div></div>`).join('');
+}
+function renderCards(bl) {
+  if (!state.courses.length) { $('cards').innerHTML = '<p class="empty">لم تختر مواد بعد. اختر من قائمة المواد بالأعلى.</p>'; return; }
+  const rm = o => `<button type="button" data-act="rm-manual" data-mid="${o.id}" aria-label="احذف موعد المحاضرة">×</button>`;
+  $('cards').innerHTML = state.courses.map(cid => {
+    const c = CMAP[cid], h = state.colors[cid], lo = lecOptions(cid);
+    let lec;
+    if (!lo.length) lec = '<div class="lec"><span>لا يوجد موعد محاضرة مسجّل لهذه المادة.</span></div>';
+    else {
+      const mine = lo.filter(o => o.manual);
+      lec = `<div class="grp"><span class="glabel">المحاضرة <small>${lo.length > 1 ? 'اختر موعدًا واحدًا' : 'موعد واحد مسجّل، اضغط عليه لإلغائه'}</small></span>${chipsByDay(cid, lo, 'lec', bl)}${
+        mine.length ? `<div class="mini">${mine.map(o => `<span class="pill"><span>أضفته: ${DAYS[o.day]} ${range(o.period, o.period)}</span>${rm(o)}</span>`).join('')}</div>` : ''}</div>`;
+    }
+    const sec = c.sections.length
+      ? `<div class="grp"><span class="glabel">السكشن <small>اختر موعدًا واحدًا</small></span>${chipsByDay(cid, c.sections, 'sec', bl)}</div>`
+      : '<div class="lec"><span>لا توجد سكاشن مسجّلة لهذه المادة.</span></div>';
+    return `<article class="course" style="--h:${h}">
+      <header><span class="sw"></span><h3>${esc(c.name)}</h3><button type="button" class="x" data-act="toggle-course" data-id="${cid}" aria-label="احذف ${esc(c.name)}">×</button></header>
+      ${lec}
+      ${sec}
+      <details class="more"><summary>أضف موعد محاضرة آخر</summary>
+        <div class="form">
+          <label>اليوم<select class="field" id="lec-day-${cid}">${dayOpts(1)}</select></label>
+          <label>الوقت<select class="field" id="lec-per-${cid}">${perOpts()}</select></label>
+          <label class="wide">المكان (اختياري)<input class="field" id="lec-room-${cid}" type="text" autocomplete="off"></label>
+          <div class="wide"><button type="button" class="btn" data-act="add-lec" data-cid="${cid}">أضف المحاضرة</button></div>
+        </div>
+      </details>
+    </article>`;
+  }).join('');
+}
+function tileHTML(b) {
+  const h = b.cid ? state.colors[b.cid] : 0;
+  return `<div class="tile ${b.kind === 'fix' ? 'fix' : b.kind === 'lec' ? 'lecture' : ''}" style="--h:${h}"><b>${esc(b.name)}</b><span class="k">${kindName(b.kind)}</span>${b.who ? `<span>${esc(b.who)}</span>` : ''}${b.room ? `<span>${esc(b.room)}</span>` : ''}</div>`;
+}
+function renderWeek(bl) {
+  const m = measure(occOf(bl));
+  const missing = state.courses.filter(cid => CMAP[cid].sections.length && !state.picks[cid]).length;
+  const tags = [];
+  if (bl.length) { tags.push(`<span class="tag">${nDays(m.days)} في الكلية</span>`, `<span class="tag">${nGaps(m.gaps)}</span>`); }
+  if (m.clashes) tags.push(`<span class="tag bad">${m.clashes === 1 ? 'تعارض واحد' : m.clashes === 2 ? 'تعارضان' : m.clashes + ' تعارضات'}</span>`);
+  else if (bl.length) tags.push('<span class="tag ok">لا تعارض</span>');
+  const noLec = state.courses.filter(cid => lecOptions(cid).length > 1 && !lecPick(cid)).length;
+  if (noLec) tags.push(`<span class="tag warn">${noLec === 1 ? 'محاضرة واحدة' : noLec === 2 ? 'محاضرتان' : noLec + ' محاضرات'} بلا موعد</span>`);
+  if (missing) tags.push(`<span class="tag warn">${missing === 1 ? 'مادة واحدة' : missing === 2 ? 'مادتان' : missing + ' مواد'} بلا سكشن</span>`);
+  $('sum').innerHTML = tags.join('');
+
+  const cell = {};
+  bl.forEach(b => (cell[b.day * 5 + b.period] ??= []).push(b));
+  const days = shownDays(bl);
+  $('grid').innerHTML = `<table class="week"><thead><tr><th scope="col">اليوم</th>${PER.map((p, i) => `<th scope="col">${range(i, i)}</th>`).join('')}</tr></thead><tbody>${
+    days.map(d => `<tr><th scope="row">${DAYS[d]}</th>${PER.map((p, i) => {
+      const list = cell[d * 5 + i] || [];
+      return `<td${list.length > 1 ? ' class="clash"' : ''}><div class="cell">${list.map(tileHTML).join('')}${list.length > 1 ? '<span class="clashlbl">تعارض</span>' : ''}</div></td>`;
+    }).join('')}</tr>`).join('')}</tbody></table>`;
+
+  if (!bl.length) { $('agenda').innerHTML = '<p class="empty">أسبوعك فاضي. اختر مادة لتظهر مواعيدها هنا.</p>'; return; }
+  const busy = days.filter(d => bl.some(b => b.day === d)), free = days.filter(d => !busy.includes(d));
+  $('agenda').innerHTML = busy.map(d => `<div class="aday"><h3>${DAYS[d]}</h3>${PER.map((p, i) => {
+    const list = cell[d * 5 + i] || [];
+    return list.length ? `<div class="aitem${list.length > 1 ? ' clash' : ''}">${range(i, i)}<div class="cell">${list.map(tileHTML).join('')}${list.length > 1 ? '<span class="clashlbl">تعارض</span>' : ''}</div></div>` : '';
+  }).join('')}</div>`).join('') + (free.length ? `<p class="free">بلا مواعيد: ${free.map(d => DAYS[d]).join('، ')}</p>` : '');
+}
+function renderFixed() {
+  const list = state.manual.filter(m => !m.cid);
+  $('fixed-list').innerHTML = list.map(m => `<span class="pill"><span>${esc(m.name)} · ${DAYS[m.day]} ${range(m.period, m.period)}${m.room ? ' · ' + esc(m.room) : ''}</span><button type="button" data-act="rm-manual" data-mid="${m.id}" aria-label="احذف ${esc(m.name)}">×</button></span>`).join('');
+}
+function renderSuggs() {
+  if (!sugg) { $('suggs').innerHTML = ''; return; }
+  if (!sugg.length) { $('suggs').innerHTML = '<p class="hint">اختر مادة واحدة على الأقل أولًا.</p>'; return; }
+  const fx = new Set(fixedBlocks().map(b => b.day * 5 + b.period));
+  const head = sugg[0].clashes ? '<p class="notice">لا يوجد جدول بلا تعارض لهذه المواد. هذه أقل الجداول تعارضًا.</p>' : '';
+  $('suggs').innerHTML = head + sugg.map((r, i) => {
+    const at = {}; for (const key in r.assign) (at[r.assign[key]] ??= []).push(key);
+    const mx = [1,2,3,4,5].map(d => `<span>${DAY_AB[d]}</span>` + PER.map((p, pi) => {
+      const k = d * 5 + pi, n = (at[k] || []).length + (fx.has(k) ? 1 : 0);
+      if (n > 1) return '<i class="c"></i>';
+      if (at[k]) return `<i class="s" style="--h:${state.colors[at[k][0].slice(2)]}"></i>`;
+      return fx.has(k) ? '<i class="f"></i>' : '<i></i>';
+    }).join('')).join('');
+    const lines = Object.keys(r.assign).sort((a, b) => r.assign[a] - r.assign[b]).map(key => {
+      const k = r.assign[key];
+      return `<li>${esc(CMAP[key.slice(2)].name)} <span>· ${key[0] === 'L' ? 'محاضرة' : 'سكشن'} · ${DAYS[(k / 5) | 0]} ${tm(PER[k % 5][0])}</span></li>`;
+    }).join('');
+    const on = i === suggApplied;
+    return `<div class="sugg${on ? ' on' : ''}">
+      <div class="head"><span><b>اقتراح ${i + 1}</b> <span class="stat">· ${nDays(r.days)} · ${nGaps(r.gaps)}${r.clashes ? ' · ' + r.clashes + ' تعارض' : ''}</span></span>
+        <button type="button" class="btn${on ? '' : ' primary'}" data-act="apply-sugg" data-i="${i}"${on ? ' disabled' : ''}>${on ? 'مطبَّق' : 'طبّق'}</button></div>
+      <div class="mx" aria-hidden="true">${mx}</div><ul>${lines}</ul></div>`;
+  }).join('');
+}
+function renderPlan() {
+  const bl = placed();
+  renderPicker(); renderCards(bl); renderFixed(); renderWeek(bl); renderSuggs();
+  $('pref-days').checked = state.prefs.days; $('pref-gaps').checked = state.prefs.gaps;
+}
+
+/* ---------- Render: browse ---------- */
+const browse = {day:-1, per:-1};
+function renderBrowse() {
+  $('f-day').innerHTML = '<span>اليوم</span>' + [-1,1,2,3,4,5].map(d => `<button type="button" class="fchip" data-act="f-day" data-v="${d}" aria-pressed="${browse.day === d}">${d < 0 ? 'الكل' : DAYS[d]}</button>`).join('');
+  $('f-per').innerHTML = '<span>الوقت</span>' + [-1,0,1,2,3].map(p => `<button type="button" class="fchip" data-act="f-per" data-v="${p}" aria-pressed="${browse.per === p}">${p < 0 ? 'الكل' : tm(PER[p][0])}</button>`).join('');
+  const q = norm($('browse-q').value);
+  const list = SECTIONS.filter(s => (browse.day < 0 || s.day === browse.day) && (browse.per < 0 || s.period === browse.per)
+    && (!q || norm(`${C[s.course]} ${s.ta} ${s.room}`).includes(q)));
+  $('browse-count').textContent = `${list.length} من ${SECTIONS.length} سكشن`;
+  if (!list.length) { $('browse-list').innerHTML = '<p class="empty">لا توجد سكاشن بهذه الشروط.</p>'; return; }
+  const groups = new Map();
+  list.forEach(s => { const k = s.day * 5 + s.period; if (!groups.has(k)) groups.set(k, []); groups.get(k).push(s); });
+  $('browse-list').innerHTML = [...groups.keys()].sort((a, b) => a - b).map(k => {
+    const rows = groups.get(k);
+    return `<div class="bgroup"><h3>${DAYS[(k / 5) | 0]} ${range(k % 5, k % 5)} <small>${rows.length} سكشن</small></h3>${rows.map(s => {
+      const on = state.picks[s.course] === s.id;
+      return `<div class="brow"><span class="n">${esc(C[s.course])}</span><span class="m room">${esc(s.room)}</span><span class="m ta">${esc(s.ta)}</span>
+        <button type="button" class="btn" data-act="browse-add" data-sid="${esc(s.id)}" aria-pressed="${on}">${on ? 'في جدولي' : 'أضف لجدولي'}</button></div>`;
+    }).join('')}</div>`;
+  }).join('');
+}
+function showTab(tab) {
+  const b = tab === 'browse';
+  $('view-plan').hidden = b; $('view-browse').hidden = !b;
+  $('tab-plan').setAttribute('aria-selected', String(!b)); $('tab-browse').setAttribute('aria-selected', String(b));
+  if (b) renderBrowse();
+  try { history.replaceState(null, '', b ? '#browse' : '#plan'); } catch (e) {}
+}
+
+/* ---------- Image export ---------- */
+function wrapText(ctx, text, maxW, maxLines) {
+  const lines = []; let cur = '';
+  for (const w of String(text).split(/\s+/)) {
+    const t = cur ? cur + ' ' + w : w;
+    if (!cur || ctx.measureText(t).width <= maxW) cur = t; else { lines.push(cur); cur = w; }
+  }
+  if (cur) lines.push(cur);
+  if (lines.length > maxLines) {
+    lines.length = maxLines; let l = lines[maxLines - 1];
+    while (l.length > 1 && ctx.measureText(l + '…').width > maxW) l = l.slice(0, -1);
+    lines[maxLines - 1] = l + '…';
+  }
+  return lines;
+}
+async function buildCanvas() {
+  const BODY = "'IBM Plex Sans Arabic','Segoe UI',Tahoma,sans-serif", DISP = "'Alexandria'," + BODY;
+  try { await Promise.all([document.fonts.load('700 30px Alexandria', 'جدول'), document.fonts.load("600 16px 'IBM Plex Sans Arabic'", 'جدول'), document.fonts.load("400 14px 'IBM Plex Sans Arabic'", 'جدول')]); } catch (e) {}
+  const bl = placed(), days = shownDays(bl), m = measure(occOf(bl));
+  const cell = {}; bl.forEach(b => (cell[b.day * 5 + b.period] ??= []).push(b));
+  const S = 2, W = 1500, pad = 44, dayW = 124, headH = 96, colH = 46, tileH = 104, g = 8, footH = 58;
+  const colW = (W - 2 * pad - dayW) / 5;
+  const rowH = days.map(d => Math.max(1, ...PER.map((p, i) => (cell[d * 5 + i] || []).length)) * (tileH + g) + g);
+  const H = pad + headH + colH + rowH.reduce((a, b) => a + b, 0) + footH + pad / 2;
+  const cv = document.createElement('canvas'); cv.width = W * S; cv.height = H * S;
+  const x = cv.getContext('2d'); x.scale(S, S);
+  const INK = '#15211B', MUTED = '#56665D', LINE = '#D3DCD4', SUNK = '#E6ECE6', BAD = '#B3261E';
+  const rr = (X, Y, w, h, r) => { x.beginPath(); if (x.roundRect) x.roundRect(X, Y, w, h, r); else x.rect(X, Y, w, h); };
+  const text = (s, X, Y, font, color, align = 'right', dir = 'rtl') => { x.font = font; x.fillStyle = color; x.textAlign = align; x.direction = dir; x.fillText(s, X, Y); };
+  x.fillStyle = '#FFFFFF'; x.fillRect(0, 0, W, H); x.textBaseline = 'alphabetic';
+  const R = W - pad;
+  text('جدولي الأسبوعي', R, pad + 36, `700 34px ${DISP}`, INK);
+  const sub = [nDays(m.days) + ' في الكلية', nGaps(m.gaps)]; if (m.clashes) sub.push(m.clashes + ' تعارض');
+  text(bl.length ? sub.join(' · ') : 'لا مواعيد بعد', R, pad + 68, `400 17px ${BODY}`, MUTED);
+  let y = pad + headH;
+  const gridL = pad, gridW = W - 2 * pad, gridH = colH + rowH.reduce((a, b) => a + b, 0);
+  x.fillStyle = SUNK; x.fillRect(gridL, y, gridW, colH); x.fillRect(R - dayW, y, dayW, gridH);
+  text('اليوم', R - dayW / 2, y + 29, `500 15px ${BODY}`, INK, 'center');
+  PER.forEach((p, i) => text(`${p[0]} – ${p[1]}`, R - dayW - i * colW - colW / 2, y + 29, `500 15px ${BODY}`, INK, 'center', 'ltr'));
+  y += colH;
+  days.forEach((d, di) => {
+    text(DAYS[d], R - dayW / 2, y + rowH[di] / 2 + 6, `500 17px ${BODY}`, INK, 'center');
+    PER.forEach((p, i) => {
+      const list = cell[d * 5 + i] || [], cx = R - dayW - (i + 1) * colW;
+      if (list.length > 1) { x.fillStyle = '#FBE5E2'; x.fillRect(cx, y, colW, rowH[di]); }
+      list.forEach((b, bi) => {
+        const tx = cx + g, ty = y + g + bi * (tileH + g), tw = colW - 2 * g, h = b.cid ? state.colors[b.cid] : 0, fix = b.kind === 'fix';
+        rr(tx, ty, tw, tileH, 8); x.fillStyle = fix ? SUNK : `hsl(${h} 66% 90%)`; x.fill();
+        x.lineWidth = b.kind === 'lec' ? 2 : 1; x.strokeStyle = fix ? LINE : `hsl(${h} 42% 64%)`; x.stroke();
+        const col = fix ? INK : `hsl(${h} 55% 19%)`, rx = tx + tw - 10;
+        x.font = `600 16px ${BODY}`; x.direction = 'rtl';
+        const lines = wrapText(x, b.name, tw - 20, 2);
+        lines.forEach((l, li) => text(l, rx, ty + 25 + li * 21, `600 16px ${BODY}`, col));
+        let ly = ty + 25 + lines.length * 21 - 2;
+        x.font = `400 13px ${BODY}`;
+        const meta = [kindName(b.kind) + (b.who ? ' · ' + b.who : ''), b.room].filter(Boolean);
+        meta.slice(0, lines.length > 1 ? 2 : 3).forEach((l, li) => text(wrapText(x, l, tw - 20, 1)[0], rx, ly + li * 18, `${li === 0 ? 600 : 400} 13px ${BODY}`, col));
+      });
+    });
+    y += rowH[di];
+  });
+  x.strokeStyle = LINE; x.lineWidth = 1;
+  let ly = pad + headH + colH;
+  days.forEach((d, di) => { x.beginPath(); x.moveTo(gridL, ly); x.lineTo(R, ly); x.stroke(); ly += rowH[di]; });
+  for (let i = 0; i <= 5; i++) { const vx = R - dayW - i * colW; x.beginPath(); x.moveTo(vx, pad + headH); x.lineTo(vx, pad + headH + gridH); x.stroke(); }
+  x.strokeRect(gridL, pad + headH, gridW, gridH);
+  days.forEach((d, di) => { let yy = pad + headH + colH + rowH.slice(0, di).reduce((a, b) => a + b, 0);
+    PER.forEach((p, i) => { if ((cell[d * 5 + i] || []).length > 1) { x.strokeStyle = BAD; x.lineWidth = 2; x.strokeRect(R - dayW - (i + 1) * colW + 1, yy + 1, colW - 2, rowH[di] - 2); } }); });
+  const fy = pad + headH + gridH + 36;
+  text('منظّم السكاشن', R, fy, `500 15px ${DISP}`, MUTED);
+  text('Youssef Mahmoud  ·  github.com/Yous2ef  ·  linkedin.com/in/yous2ef1', pad, fy, `400 14px ${BODY}`, MUTED, 'left', 'ltr');
+  return cv;
+}
+let shotCanvas = null, downloads = null;
+async function openShot() {
+  shotCanvas = await buildCanvas();
+  $('shot-img').src = shotCanvas.toDataURL('image/png');
+  $('shot-msg').textContent = 'على الموبايل: اضغط مطوّلًا على الصورة واختر حفظ. على الكمبيوتر: كليك يمين ثم حفظ الصورة.';
+  $('dl-btn').hidden = !downloads;
+  $('shot').hidden = false;
+}
+async function downloadShot() {
+  if (!downloads || !shotCanvas) return;
+  const blob = await new Promise(res => shotCanvas.toBlob(res, 'image/png'));
+  try { await downloads.save({filename:'my-timetable.png', data:blob}); $('shot-msg').textContent = 'تم تنزيل الصورة.'; }
+  catch (e) {
+    if (e && e.code === 'declined') return;
+    if (e && e.code === 'rate_limited') { $('shot-msg').textContent = 'انتظر لحظة ثم جرّب التنزيل مرة أخرى.'; return; }
+    $('dl-btn').hidden = true;
+    $('shot-msg').textContent = 'التنزيل غير متاح هنا. اضغط مطوّلًا على الصورة (أو كليك يمين) واحفظها.';
+  }
+}
+try { if (window.claude && window.claude.use) window.claude.use('downloads').then(d => { downloads = d; if (!$('shot').hidden) $('dl-btn').hidden = !d; }).catch(() => {}); } catch (e) {}
+
+/* ---------- Events ---------- */
+let resetArmed = 0;
+function resetAll() {
+  state.courses = []; state.picks = {}; state.lpicks = {}; state.colors = {}; state.manual = [];
+  $('course-q').value = '';
+  changed();
+}
+function addManual(m) { state.manual.push(Object.assign({id:'m' + Date.now().toString(36) + Math.floor(Math.random() * 1e4)}, m)); }
+document.addEventListener('click', e => {
+  const el = e.target.closest('[data-act]'); if (!el) return;
+  const act = el.dataset.act;
+  if (act !== 'reset' && resetArmed) { clearTimeout(resetArmed); resetArmed = 0; $('reset-btn').textContent = 'ابدأ من جديد'; }
+  if (act === 'tab') showTab(el.dataset.tab);
+  else if (act === 'toggle-course') {
+    const id = el.dataset.id, i = state.courses.indexOf(id);
+    if (i >= 0) { state.courses.splice(i, 1); delete state.picks[id]; delete state.lpicks[id]; delete state.colors[id]; state.manual = state.manual.filter(m => m.cid !== id); }
+    else { state.courses.push(id); ensureColor(id); }
+    changed();
+  }
+  else if (act === 'pick') {
+    const {cid, sid} = el.dataset;
+    if (state.picks[cid] === sid) delete state.picks[cid]; else state.picks[cid] = sid;
+    changed();
+  }
+  else if (act === 'pick-lec') {
+    const {cid, sid} = el.dataset;
+    const cur = lecPick(cid);
+    if (cur && cur.id === sid) { if (lecOptions(cid).length === 1) state.lpicks[cid] = 'none'; else delete state.lpicks[cid]; }
+    else state.lpicks[cid] = sid;
+    changed();
+  }
+  else if (act === 'add-lec') {
+    const cid = el.dataset.cid;
+    addManual({cid, day:+$('lec-day-' + cid).value, period:+$('lec-per-' + cid).value, room:$('lec-room-' + cid).value.trim()});
+    changed();
+  }
+  else if (act === 'add-fixed') {
+    const name = $('fx-name').value.trim();
+    if (!name) { $('fx-msg').textContent = 'اكتب اسم الموعد أولًا.'; $('fx-name').focus(); return; }
+    $('fx-msg').textContent = '';
+    addManual({cid:null, name, day:+$('fx-day').value, period:+$('fx-per').value, room:$('fx-room').value.trim()});
+    $('fx-name').value = ''; $('fx-room').value = '';
+    changed();
+  }
+  else if (act === 'rm-manual') {
+    const mid = el.dataset.mid;
+    state.manual = state.manual.filter(m => m.id !== mid);
+    for (const cid in state.lpicks) if (state.lpicks[cid] === mid) delete state.lpicks[cid];
+    changed();
+  }
+  else if (act === 'suggest') { sugg = suggest(); suggApplied = -1; renderSuggs(); }
+  else if (act === 'apply-sugg') { const i = +el.dataset.i; if (sugg && sugg[i]) { applySugg(sugg[i]); suggApplied = i; changed(true); } }
+  else if (act === 'reset-now') resetAll();
+  else if (act === 'reset') {
+    if (resetArmed) { clearTimeout(resetArmed); resetArmed = 0; el.textContent = 'ابدأ من جديد'; resetAll(); }
+    else { el.textContent = 'اضغط مرة أخرى لمسح كل شيء'; resetArmed = setTimeout(() => { resetArmed = 0; el.textContent = 'ابدأ من جديد'; }, 4000); }
+  }
+  else if (act === 'save-img') openShot();
+  else if (act === 'download-img') downloadShot();
+  else if (act === 'close-shot') $('shot').hidden = true;
+  else if (act === 'f-day') { browse.day = +el.dataset.v; renderBrowse(); }
+  else if (act === 'f-per') { browse.per = +el.dataset.v; renderBrowse(); }
+  else if (act === 'browse-add') {
+    const s = SMAP[el.dataset.sid]; if (!s) return;
+    if (state.picks[s.course] === s.id) delete state.picks[s.course];
+    else { if (!state.courses.includes(s.course)) { state.courses.push(s.course); ensureColor(s.course); } state.picks[s.course] = s.id; }
+    changed();
+  }
+});
+$('course-q').addEventListener('input', renderPicker);
+$('browse-q').addEventListener('input', renderBrowse);
+$('pref-days').addEventListener('change', e => { state.prefs.days = e.target.checked; sugg = null; save(); renderSuggs(); });
+$('pref-gaps').addEventListener('change', e => { state.prefs.gaps = e.target.checked; sugg = null; save(); renderSuggs(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('shot').hidden) $('shot').hidden = true; });
+
+/* ---------- Boot ---------- */
+$('fx-day').innerHTML = dayOpts(1); $('fx-per').innerHTML = perOpts();
+load(); renderPlan();
+if (location.hash === '#browse') showTab('browse');
+})();
+</script>
+
+</body></html>
